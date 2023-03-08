@@ -1,4 +1,5 @@
-%%writefile ocr_task.py
+
+#%%writefile ocr_task.py
 
 import easyocr as ocr
 import streamlit as st
