@@ -1,11 +1,14 @@
-import easyocr as ocr  #OCR
-import streamlit as st  #Web App
-from PIL import Image #Image Processing
-import numpy as np #Image Processing 
-import mysql.connector
+%%writefile ocr_task.py
+
+import easyocr as ocr
+import streamlit as st
+from PIL import Image
+import numpy as np
 import pandas as pd
-#import matplotlib as plt
-# Database Connection
+from easyocr import Reader
+import base64
+import mysql.connector
+import pandas as pd 
 
 EasyOcrTask=mysql.connector.connect(host='localhost',
                         database='EasyOcrTask',
@@ -14,7 +17,9 @@ EasyOcrTask=mysql.connector.connect(host='localhost',
 mycursor = EasyOcrTask.cursor()
 
 
-
+img = Image.open('/content/maxresdefault (2).jpg')
+col1, col2, col3, col4 = st.columns([0.2, 5, 0.2,0.1])
+col2.image(img, width=500)
 
 #title
 st.title("Easy OCR - Extract Text from Images")
@@ -22,51 +27,48 @@ st.title("Easy OCR - Extract Text from Images")
 #subtitle
 st.markdown("## Optical Character Recognition - Using `easyocr`, `streamlit`")
 
-st.markdown("")
 
 #image uploader
 image = st.file_uploader(label = "Upload your image here",type=['png','jpg','jpeg'])
 
-
 @st.cache_data
-def load_model(): 
-    reader = ocr.reader(['en'],model_storage_directory='.')
-    return reader 
+def Ocr_model():
+  reader = ocr.Reader(['en','ta'])
+  return reader
 
-reader = load_model() #load model
+reader = Ocr_model()
 
 if image is not None:
 
-    input_image = Image.open(image) #read image
-    st.image(input_image) #display image
+  Ocr_image = Image.open(image)
+  st.image(Ocr_image)
 
-    with st.spinner("🤖 AI is at Work! "):
-        
+  with st.spinner("Preparing your Text! "):
+      
 
-        result = reader.readtext(np.array(input_image))
+      result = reader.readtext(np.array(Ocr_image))
 
-        result_text = [] #empty list for results
+      result_text = []
 
 
-        for text in result:
-            result_text.append(text[1])
+      for text in result:
+          result_text.append(text[1])
 
-        st.write(result_text)
-    #st.success("Here you go!")
-    st.snow()
+      st.write(result_text)
+
+  st.snow()
+
 else:
-    st.write("Upload an Image")
-
+    st.write("Upload a image")
 
 with st.sidebar:
     st.title("Upload to Database")
     
     if st.button("Submit to Database"):
         st.write(result_text)
-        
+
     else:
         print("Invalid Attempt")
-        
 
 if result_text:
     sql= "CREATE TABLE Easy_Ocr_Task (MyIndex INT NOT NULL AUTO_INCREMENT,Name VARCHAR(50),Business_type VARCHAR(25),phone INT,phone1 INT, Website_url VARCHAR(30),Email VARCHAR(30),Address VARCHAR(50) ,Business_Name VARCHAR(50),PRIMARY KEY (MyIndex))"
@@ -80,6 +82,7 @@ for index, row in df.iterrows():
 print('DataFrame Inserted successfully.')
 EasyOcrTask.commit()
 mycursor.close()
+
 
 
 
