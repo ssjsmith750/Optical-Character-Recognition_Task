@@ -17,6 +17,27 @@ EasyOcrTask=mysql.connector.connect(host='localhost',
                         password='2668')
 mycursor = EasyOcrTask.cursor()
 
+## Background Image
+
+def add_bg_from_url():
+    st.markdown(
+         f"""
+         <style>
+         .stApp {{
+             background-image: url("https://cdn.pixabay.com/photo/2016/09/13/19/31/texture-1668079_960_720.jpg");
+             background-attachment: fixed;
+             background-size: cover
+         }}
+         </style>
+         """,
+         unsafe_allow_html=True
+     )
+
+add_bg_from_url() 
+
+#title
+st.title("EasyOCR - Extract Text from Images")
+
 
 img = Image.open('/content/maxresdefault (2).jpg')
 col1, col2, col3, col4 = st.columns([0.2, 5, 0.2,0.1])
