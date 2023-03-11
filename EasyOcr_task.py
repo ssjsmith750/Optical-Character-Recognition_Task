@@ -1,24 +1,29 @@
-
-#%%writefile ocr_task.py
-
-import easyocr as ocr
 import streamlit as st
-from PIL import Image
-import numpy as np
-import pandas as pd
-from easyocr import Reader
-import base64
+import easyocr
 import mysql.connector
-import pandas as pd 
+import cv2
+import numpy as np 
+import pandas as pd
+from mysql.connector import Error
 
-EasyOcrTask=mysql.connector.connect(host='localhost',
-                        database='EasyOcrTask',
-                        user='root',
-                        password='2668')
-mycursor = EasyOcrTask.cursor()
 
-## Background Image
+# connect to the mysql Database
+ocrtask = mysql.connector.connect(
+  host ="localhost",
+  user = "root",
+  password = "2668",
+  database = "ocr"
+)
 
+mycursor = ocrtask.cursor()
+
+# Create a table to store the business card information
+mycursor.execute("CREATE TABLE IF NOT EXISTS bus (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), Business*_title  VARCHAR(255), address VARCHAR(255), postcode VARCHAR(255), phone VARCHAR(255), email VARCHAR(255), website VARCHAR(255), company_name VARCHAR(225))")
+
+# Create an OCR object to read text from the image
+reader = easyocr.Reader(['en'])
+
+################################ Streamlit App Creation ###################################
 def add_bg_from_url():
     st.markdown(
          f"""
@@ -35,105 +40,101 @@ def add_bg_from_url():
 
 add_bg_from_url() 
 
-#title
-st.title("EasyOCR - Extract Text from Images")
+st.title(":blue[Extracting Business Card Data with OCR]")
 
+# Create a file uploader widget
+uploaded_file = st.file_uploader("Upload a business card image", type=["jpg", "jpeg", "png"])
 
-img = Image.open('/content/maxresdefault (2).jpg')
-col1, col2, col3, col4 = st.columns([0.2, 5, 0.2,0.1])
-col2.image(img, width=500)
+# Create a sidebar menu with options to add, view, update, and delete business card information
+menu = ['Add', 'View', 'Update', 'Delete']
+choice = st.sidebar.selectbox("Select an option", menu)
 
-#title
-st.title("Easy OCR - Extract Text from Images")
+if choice == 'Add':
+    if uploaded_file is not None:
+        # Read the image using OpenCV
+        image = cv2.imdecode(np.fromstring(uploaded_file.read(), np.uint8), 1)
+        # Display the up loaded image
+        st.image(image, caption='Uploaded business card image', use_column_width=True)
+        # Create a button to extract information from the image
+        if st.button('Extract Information'):
+            # Call the function to extract the information from the image
+            bounds = reader.readtext(image, detail=0)
+            # Convert the extracted information to a string
+            text = "\n".join(bounds)
+            # Insert the extracted information and image into the database
+            sql = "INSERT INTO bus(name, job_title, address, postcode, phone, email, website, company_name) VALUES ( %s, %s, %s, %s, %s, %s, %s, %s)"
+            val = (bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5], bounds[6], bounds[7])
+            mycursor.execute(sql, val)
+            mydb.commit()
+            # Display a success message
+            st.success("Business card information added to database.")
+elif choice == 'View':
+    # Display the stored business card information
+    mycursor.execute("SELECT * FROM bus")
+    result = mycursor.fetchall()
+    df = pd.DataFrame(result, columns=['id','name', 'job_title', 'address', 'postcode', 'phone', 'email', 'website', 'company_name'])
+    st.write(df)
 
-#subtitle
-st.markdown("## Optical Character Recognition - Using `easyocr`, `streamlit`")
-
-
-#image uploader
-image = st.file_uploader(label = "Upload your image here",type=['png','jpg','jpeg'])
-
-@st.cache_data
-def Ocr_model():
-  reader = ocr.Reader(['en','ta'])
-  return reader
-
-reader = Ocr_model()
-
-if image is not None:
-
-  Ocr_image = Image.open(image)
-  st.image(Ocr_image)
-
-  with st.spinner("Preparing your Text! "):
-      
-
-      result = reader.readtext(np.array(Ocr_image))
-
-      result_text = []
-
-
-      for text in result:
-          result_text.append(text[1])
-
-      st.write(result_text)
-
-  st.snow()
-
-else:
-    st.write("Upload a image")
-
-with st.sidebar:
-    st.title("Upload to Database")
+elif choice == 'Update':
+    # Create a dropdown menu to select a business card to update
+    mycursor.execute("SELECT id, name FROM bus")
+    result = mycursor.fetchall()
+    business_cards = {}
+    for row in result:
+        business_cards[row[1]] = row[0]
+    selected_card_name = st.selectbox("Select a business card to update", list(business_cards.keys()))
     
-    if st.button("Submit to Database"):
-        st.write(result_text)
+    # Get the current information for the selected business card
+    mycursor.execute("SELECT * FROM bus WHERE name=%s", (selected_card_name,))
+    result = mycursor.fetchone()
 
-    else:
-        print("Invalid Attempt")
+    # Display the current information for the selected business card
+    st.write("Name:", result[1])
+    st.write("Job Title:", result[2])
+    st.write("Address:", result[3])
+    st.write("Postcode:", result[4])
+    st.write("Phone:", result[5])
+    st.write("Email:", result[6])
+    st.write("Website:", result[7])
+    st.write("company_name:", result[8])
 
-if result_text:
-    sql= "CREATE TABLE Easy_Ocr_Task (MyIndex INT NOT NULL AUTO_INCREMENT,Name VARCHAR(50),Business_type VARCHAR(25),phone INT,phone1 INT, Website_url VARCHAR(30),Email VARCHAR(30),Address VARCHAR(50) ,Business_Name VARCHAR(50),PRIMARY KEY (MyIndex))"
-mycursor.execute(sql)
-print('Table created successfully.')
-EasyOcrTask.commit()
-df = result_text
-for index, row in df.iterrows():
-     quer="INSERT INTO EasyOcrTask.Easy_Ocr_Task(Name,Business_type,phone,phone1,Website_url,Email,Address,Business_Name) values(%s,%s,%s,%s,%s,%s,%s,%s)"
-     mycursor.execute(quer,(row.Name,row.Business_type,row.phone,row.phone1,row.Website_url,row.Email,row.Address,row.Business_Name))
-print('DataFrame Inserted successfully.')
-EasyOcrTask.commit()
-mycursor.close()
+    # Get new information for the business card
+    name = st.text_input("Name", result[1])
+    job_title = st.text_input("Business_Title", result[2])
+    address = st.text_input("Address", result[3])
+    postcode = st.text_input("Postcode", result[4])
+    phone = st.text_input("Phone", result[5])
+    email = st.text_input("Email", result[6])
+    website = st.text_input("Website", result[7])
+    company_name = st.text_input("Company Name", result[8])
 
+    # Create a button to update the business card
+    if st.button("Update Business Card"):
+        # Update the information for the selected business card in the database
+        mycursor.execute("UPDATE bus SET name=%s, Business_Title=%s, address=%s, postcode=%s, phone=%s, email=%s, website=%s, company_name=%s WHERE name=%s", 
+                             (name, Business_Title, address, postcode, phone, email, website, company_name, selected_card_name))
+        mydb.commit()
+        st.success("Business card information updated in database.")
+elif choice == 'Delete':
+    # Create a dropdown menu to select a business card to delete
+    mycursor.execute("SELECT id, name FROM bus")
+    result = mycursor.fetchall()
+    business_cards = {}
+    for row in result:
+        business_cards[row[0]] = row[1]
+    selected_card_id = st.selectbox("Select a business card to delete", list(business_cards.keys()), format_func=lambda x: business_cards[x])
 
+    # Get the name of the selected business card
+    mycursor.execute("SELECT name FROM bus WHERE id=%s", (selected_card_id,))
+    result = mycursor.fetchone()
+    selected_card_name = result[0]
 
+    # Display the current information for the selected business card
+    st.write("Name:", selected_card_name)
+    # Display the rest of the information for the selected business card
 
-
-
-
-
-
-page_bg_img = """
-<style>
-[data-testid="stAppViewContainer"] {
-background-image: url();
-background-size: cover;
-}
-
-[data-testid="stHeader"]{
-background-color: rgba(0,0,0,0);
-}
-
-[data-testid="stToolbar"] {
-right: 2rem;
-}
-
-[data-testid="stSidebar"] {
-background-image: url("")
-backgound-size: cover;
-}
-
-</style>
-"""
-
-st.markdown(page_bg_img,unsafe_allow_html=True)
+    # Create a button to confirm the deletion of the selected business card
+    if st.button("Delete Business Card"):
+        mycursor.execute("DELETE FROM bus WHERE name=%s", (selected_card_name,))
+        mydb.commit()
+        st.success("Business card information deleted from database.")
