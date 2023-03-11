@@ -47,9 +47,9 @@ uploaded_file = st.file_uploader("Upload a business card image", type=["jpg", "j
 
 # Create a sidebar menu with options to add, view, update, and delete business card information
 menu = ['Add', 'View', 'Update', 'Delete']
-choice = st.sidebar.selectbox("Select an option", menu)
+option = st.sidebar.selectbox("Select an option", menu)
 
-if choice == 'Add':
+if option == 'Add':
     if uploaded_file is not None:
         # Read the image using OpenCV
         image = cv2.imdecode(np.fromstring(uploaded_file.read(), np.uint8), 1)
@@ -68,14 +68,14 @@ if choice == 'Add':
             mydb.commit()
             # Display a success message
             st.success("Business card information added to database.")
-elif choice == 'View':
+elif option == 'View':
     # Display the stored business card information
     mycursor.execute("SELECT * FROM bus")
     result = mycursor.fetchall()
     df = pd.DataFrame(result, columns=['id','name', 'job_title', 'address', 'postcode', 'phone', 'email', 'website', 'company_name'])
     st.write(df)
 
-elif choice == 'Update':
+elif option == 'Update':
     # Create a dropdown menu to select a business card to update
     mycursor.execute("SELECT id, name FROM bus")
     result = mycursor.fetchall()
@@ -115,7 +115,7 @@ elif choice == 'Update':
                              (name, Business_Title, address, postcode, phone, email, website, company_name, selected_card_name))
         mydb.commit()
         st.success("Business card information updated in database.")
-elif choice == 'Delete':
+elif option == 'Delete':
     # Create a dropdown menu to select a business card to delete
     mycursor.execute("SELECT id, name FROM bus")
     result = mycursor.fetchall()
