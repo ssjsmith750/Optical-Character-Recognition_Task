@@ -7,18 +7,20 @@ import pandas as pd
 from mysql.connector import Error
 
 
-# connect to the mysql Database
-ocrtask = mysql.connector.connect(
-  host ="localhost",
-  user = "root",
-  password = "2668",
-  database = "ocr"
+
+
+# To connect to the database
+ocr = mysql.connector.connect(
+    host="localhost",
+    user="root",
+    password="2668",
+    database="OCRTASK"
 )
 
-mycursor = ocrtask.cursor()
+mycursor = ocr.cursor()
 
 # Create a table to store the business card information
-mycursor.execute("CREATE TABLE IF NOT EXISTS bus (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), Business*_title  VARCHAR(255), address VARCHAR(255), postcode VARCHAR(255), phone VARCHAR(255), email VARCHAR(255), website VARCHAR(255), company_name VARCHAR(225))")
+mycursor.execute("CREATE TABLE IF NOT EXISTS bus (id INT AUTO_INCREMENT PRIMARY KEY, Name VARCHAR(50), Business_title  VARCHAR(50), address VARCHAR(50), postcode VARCHAR(50), phone VARCHAR(50), email VARCHAR(50), website VARCHAR(50), company_name VARCHAR(50))")
 
 # Create an OCR object to read text from the image
 reader = easyocr.Reader(['en'])
@@ -62,17 +64,17 @@ if option == 'Add':
             # Convert the extracted information to a string
             text = "\n".join(bounds)
             # Insert the extracted information and image into the database
-            sql = "INSERT INTO bus(name, job_title, address, postcode, phone, email, website, company_name) VALUES ( %s, %s, %s, %s, %s, %s, %s, %s)"
+            sql = "INSERT INTO bus(name, Business_title, address, postcode, phone, email, website, company_name) VALUES ( %s, %s, %s, %s, %s, %s, %s, %s)"
             val = (bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5], bounds[6], bounds[7])
             mycursor.execute(sql, val)
-            mydb.commit()
+            ocr.commit()
             # Display a success message
             st.success("Business card information added to database.")
 elif option == 'View':
     # Display the stored business card information
     mycursor.execute("SELECT * FROM bus")
     result = mycursor.fetchall()
-    df = pd.DataFrame(result, columns=['id','name', 'job_title', 'address', 'postcode', 'phone', 'email', 'website', 'company_name'])
+    df = pd.DataFrame(result, columns=['id','name', 'Business_title', 'address', 'postcode', 'phone', 'email', 'website', 'company_name'])
     st.write(df)
 
 elif option == 'Update':
@@ -90,7 +92,7 @@ elif option == 'Update':
 
     # Display the current information for the selected business card
     st.write("Name:", result[1])
-    st.write("Job Title:", result[2])
+    st.write("Business_title :", result[2])
     st.write("Address:", result[3])
     st.write("Postcode:", result[4])
     st.write("Phone:", result[5])
